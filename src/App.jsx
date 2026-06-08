@@ -246,11 +246,20 @@ function App() {
     );
   }, []);
 
+  const simulationTimeoutRef = useRef(null);
+  const runSimulationRef = useRef(null);
+
   const runSimulation = useCallback(() => {
     if (!runningRef.current) return;
     nextGeneration();
-    setTimeout(runSimulation, 150);
+    simulationTimeoutRef.current = setTimeout(() => {
+      runSimulationRef.current?.();
+    }, 150);
   }, [nextGeneration]);
+
+  useEffect(() => {
+    runSimulationRef.current = runSimulation;
+  }, [runSimulation]);
 
   const handleRun = () => {
     setRunning(true);
