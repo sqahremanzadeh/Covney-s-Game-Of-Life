@@ -70,7 +70,9 @@
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .controls button:hover:not(:disabled) {
@@ -98,6 +100,65 @@
   gap: 1px;
   justify-content: center;
   margin: 0 auto;
+}
+
+.preset-panel {
+  width: min(100%, 1040px);
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.9);
+  text-align: left;
+}
+
+.preset-panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.preset-note {
+  margin: 0 0 1rem;
+  color: #cbd5e1;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.preset-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+  text-align: left;
+}
+
+.preset-button:hover:not(:disabled) {
+  background: #1f2937;
+  transform: translateY(-1px);
+}
+
+.preset-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.preset-description {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #cbd5e1;
 }
 
 .cell {
