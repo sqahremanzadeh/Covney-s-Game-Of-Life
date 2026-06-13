@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: ["main", "master", "gh-pages"]
+  push: {}
   workflow_dispatch:
 
 permissions:
@@ -31,6 +30,12 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Normalize build output to ./dist
+        run: |
+          # Move common build output folders to ./dist so upload step always finds the site
+          if [ -d "build" ]; then rm -rf dist && mv build dist; fi
+          if [ -d "out" ]; then rm -rf dist && mv out dist; fi
+          if [ ! -d "dist" ]; then echo "No build output found; make sure 'vite build' generated files in ./dist" && exit 1; fi
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
