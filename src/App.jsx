@@ -154,6 +154,14 @@ const PRESETS = [
   },
 ];
 
+const COLOR_SCHEMES = [
+  { id: "main", title: "Classic" },
+  { id: "light1", title: "Sky" },
+  { id: "light2", title: "Sand" },
+  { id: "dark1", title: "Indigo" },
+  { id: "dark2", title: "Forest" },
+];
+
 const neighborOffsets = [
   [0, 1],
   [0, -1],
@@ -168,6 +176,11 @@ const neighborOffsets = [
 function App() {
   const [grid, setGrid] = useState(() => createEmptyGrid());
   const [running, setRunning] = useState(false);
+  const [savedPatterns, setSavedPatterns] = useState([]);
+  const [theme, setTheme] = useState("main");
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [pendingPatternName, setPendingPatternName] = useState("");
+  const saveInputRef = useRef(null);
   const runningRef = useRef(running);
 
   useEffect(() => {
@@ -188,6 +201,80 @@ function App() {
 
   const randomizeGrid = useCallback(() => {
     setGrid(createRandomGrid());
+  }, []);
+
+  const isBoardEmpty = grid.every((row) => row.every((cell) => !cell));
+
+  const closeSaveModal = useCallback(() => {
+    setSaveModalOpen(false);
+  }, []);
+
+  const savePattern = useCallback(() => {
+    if (isBoardEmpty || savedPatterns.length >= 5 || running) {
+      return;
+    }
+
+    const currentGridAsString = JSON.stringify(grid);
+    const isCurrentGridAPreset = PRESETS.some((preset) => {
+      const presetGrid = createEmptyGrid();
+      const rowOffset = Math.floor((ROWS - preset.height) / 2);
+      const colOffset = Math.floor((COLS - preset.width) / 2);
+
+      preset.cells.forEach(([row, col]) => {
+        const targetRow = rowOffset + row;
+        const targetCol = colOffset + col;
+        if (
+          targetRow >= 0 &&
+          targetRow < ROWS &&
+          targetCol >= 0 &&
+          targetCol < COLS
+        ) {
+          presetGrid[targetRow][targetCol] = true;
+        }
+      });
+
+      return JSON.stringify(presetGrid) === currentGridAsString;
+    });
+
+    if (isCurrentGridAPreset) {
+      return;
+    }
+
+    const defaultName = `Saved pattern ${savedPatterns.length + 1}`;
+    setPendingPatternName(defaultName);
+    setSaveModalOpen(true);
+  }, [isBoardEmpty, savedPatterns.length, running, grid]);
+
+  const confirmSavePattern = useCallback(() => {
+    if (
+      !pendingPatternName.trim() ||
+      isBoardEmpty ||
+      savedPatterns.length >= 5
+    ) {
+      return;
+    }
+
+    setSavedPatterns((prevPatterns) => [
+      ...prevPatterns,
+      {
+        id: Date.now(),
+        name: pendingPatternName.trim(),
+        grid: grid.map((row) => [...row]),
+      },
+    ]);
+    setSaveModalOpen(false);
+  }, [grid, isBoardEmpty, pendingPatternName, savedPatterns.length]);
+
+  const loadSavedPattern = useCallback((pattern) => {
+    setRunning(false);
+    runningRef.current = false;
+    setGrid(pattern.grid.map((row) => [...row]));
+  }, []);
+
+  const deleteSavedPattern = useCallback((patternIndex) => {
+    setSavedPatterns((prevPatterns) =>
+      prevPatterns.filter((_, index) => index !== patternIndex),
+    );
   }, []);
 
   const createPatternGrid = useCallback((preset) => {
@@ -299,6 +386,9 @@ function App() {
         clearGrid();
       } else if (key >= "1" && key <= String(PRESETS.length) && !running) {
         loadPreset(PRESETS[Number(key) - 1]);
+      } else if (key === "v" && !running) {
+        event.preventDefault();
+        savePattern();
       }
     };
 
@@ -312,16 +402,85 @@ function App() {
     randomizeGrid,
     clearGrid,
     loadPreset,
+    savePattern,
   ]);
 
+  useEffect(() => {
+    if (saveModalOpen && saveInputRef.current) {
+      saveInputRef.current.focus();
+      saveInputRef.current.select();
+    }
+  }, [saveModalOpen]);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${theme}`}>
       <header className="app-header">
-        <h1 style={{ color: "black" }}>Conway&apos;s Game of Life</h1>
+        <svg
+          className="page-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 64 64"
+          role="img"
+          aria-label="Game of Life icon"
+        >
+          <rect width="64" height="64" rx="12" fill="var(--surface-strong)" />
+          <g fill="var(--text)">
+            <rect x="6" y="6" width="12" height="12" rx="3" />
+            <rect x="26" y="6" width="12" height="12" rx="3" />
+            <rect x="46" y="6" width="12" height="12" rx="3" />
+            <rect x="6" y="26" width="12" height="12" rx="3" />
+            <rect x="26" y="26" width="12" height="12" rx="3" />
+            <rect x="46" y="26" width="12" height="12" rx="3" />
+            <rect x="6" y="46" width="12" height="12" rx="3" />
+            <rect x="26" y="46" width="12" height="12" rx="3" />
+          </g>
+          <rect
+            x="26"
+            y="46"
+            width="12"
+            height="12"
+            rx="3"
+            fill="var(--accent)"
+          />
+          <rect
+            x="6"
+            y="26"
+            width="12"
+            height="12"
+            rx="3"
+            fill="var(--accent)"
+          />
+          <rect
+            x="46"
+            y="6"
+            width="12"
+            height="12"
+            rx="3"
+            fill="var(--accent)"
+          />
+        </svg>
+        <h1>Conway&apos;s Game of Life</h1>
         <p>
           Click cells to toggle alive/dead and prepare your starting pattern.
         </p>
       </header>
+
+      <section className="theme-selector">
+        <h2>Color schemes</h2>
+        <div className="theme-buttons">
+          {COLOR_SCHEMES.map((scheme) => (
+            <button
+              key={scheme.id}
+              type="button"
+              className={`theme-button ${scheme.id} ${theme === scheme.id ? "active" : ""}`}
+              aria-label={scheme.title}
+              title={scheme.title}
+              onClick={() => setTheme(scheme.id)}
+            >
+              <span className="sr-only">{scheme.title}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="controls">
         {[
@@ -369,7 +528,7 @@ function App() {
       </section>
       <p className="shortcut-note">
         Keyboard shortcuts: S = Start, X = Stop, E = Step, R = Random, C =
-        Clear. Patterns: 1–5.
+        Clear. Patterns: 1–5, V = Save current pattern.
       </p>
 
       <div className="board-wrapper">
@@ -399,6 +558,107 @@ function App() {
           ))}
         </div>
       </section>
+
+      <section className="saved-panel">
+        <div className="saved-header">
+          <div>
+            <h2>Saved patterns</h2>
+            <p className="preset-note">
+              Save up to 5 custom patterns and load them when you need them.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="save-pattern-button"
+            onClick={savePattern}
+            disabled={running || isBoardEmpty || savedPatterns.length >= 5}
+          >
+            Save current pattern
+            <span className="shortcut-badge">V</span>
+          </button>
+        </div>
+
+        <div className="preset-grid">
+          {savedPatterns.length > 0 ? (
+            savedPatterns.map((pattern, index) => (
+              <div key={pattern.id} className="saved-pattern-card">
+                <button
+                  type="button"
+                  className="preset-button saved-pattern-button"
+                  onClick={() => loadSavedPattern(pattern)}
+                  disabled={running}
+                >
+                  <div className="preset-heading">
+                    <strong>{pattern.name}</strong>
+                    <span className="preset-shortcut">{index + 1}</span>
+                  </div>
+                  <span className="preset-description">
+                    Custom saved pattern
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="saved-delete-button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteSavedPattern(index);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="saved-empty">No saved patterns yet.</div>
+          )}
+        </div>
+      </section>
+
+      {saveModalOpen ? (
+        <div className="modal-overlay" onClick={closeSaveModal}>
+          <div
+            className="save-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="save-modal-title">Name your pattern</h3>
+            <p>Enter a custom name for your saved pattern.</p>
+            <input
+              ref={saveInputRef}
+              type="text"
+              value={pendingPatternName}
+              onChange={(event) => setPendingPatternName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  confirmSavePattern();
+                } else if (event.key === "Escape") {
+                  closeSaveModal();
+                }
+              }}
+              placeholder="Pattern name"
+            />
+            <div className="save-modal-actions">
+              <button
+                type="button"
+                className="save-pattern-button"
+                onClick={confirmSavePattern}
+                disabled={!pendingPatternName.trim()}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="saved-delete-button"
+                onClick={closeSaveModal}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
