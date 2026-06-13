@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import Grid from "./components/Grid.jsx";
 
-const ROWS = 100;
-const COLS = 100;
+const ROWS = 25;
+const COLS = 25;
 
 const createEmptyGrid = () =>
   Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => false));
@@ -182,15 +182,15 @@ function App() {
     });
   }, []);
 
-  const clearGrid = () => {
+  const clearGrid = useCallback(() => {
     setGrid(createEmptyGrid());
-  };
+  }, []);
 
-  const randomizeGrid = () => {
+  const randomizeGrid = useCallback(() => {
     setGrid(createRandomGrid());
-  };
+  }, []);
 
-  const createPatternGrid = (preset) => {
+  const createPatternGrid = useCallback((preset) => {
     const grid = createEmptyGrid();
     const rowOffset = Math.floor((ROWS - preset.height) / 2);
     const colOffset = Math.floor((COLS - preset.width) / 2);
@@ -209,13 +209,16 @@ function App() {
     });
 
     return grid;
-  };
+  }, []);
 
-  const loadPreset = (preset) => {
-    setRunning(false);
-    runningRef.current = false;
-    setGrid(createPatternGrid(preset));
-  };
+  const loadPreset = useCallback(
+    (preset) => {
+      setRunning(false);
+      runningRef.current = false;
+      setGrid(createPatternGrid(preset));
+    },
+    [createPatternGrid],
+  );
 
   const nextGeneration = useCallback(() => {
     setGrid((prevGrid) =>
@@ -261,16 +264,55 @@ function App() {
     runSimulationRef.current = runSimulation;
   }, [runSimulation]);
 
-  const handleRun = () => {
+  const handleRun = useCallback(() => {
     setRunning(true);
     runningRef.current = true;
     runSimulation();
-  };
+  }, [runSimulation]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     setRunning(false);
     runningRef.current = false;
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target.isContentEditable
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "s" && !running) {
+        handleRun();
+      } else if (key === "x" && running) {
+        handleStop();
+      } else if (key === "e" && !running) {
+        nextGeneration();
+      } else if (key === "r" && !running) {
+        randomizeGrid();
+      } else if (key === "c" && !running) {
+        clearGrid();
+      } else if (key >= "1" && key <= String(PRESETS.length) && !running) {
+        loadPreset(PRESETS[Number(key) - 1]);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    running,
+    handleRun,
+    handleStop,
+    nextGeneration,
+    randomizeGrid,
+    clearGrid,
+    loadPreset,
+  ]);
 
   return (
     <div className="app-shell">
@@ -282,22 +324,53 @@ function App() {
       </header>
 
       <section className="controls">
-        <button type="button" onClick={handleRun} disabled={running}>
-          Start
-        </button>
-        <button type="button" onClick={handleStop} disabled={!running}>
-          Stop
-        </button>
-        <button type="button" onClick={nextGeneration} disabled={running}>
-          Step
-        </button>
-        <button type="button" onClick={randomizeGrid} disabled={running}>
-          Random
-        </button>
-        <button type="button" onClick={clearGrid} disabled={running}>
-          Clear
-        </button>
+        {[
+          {
+            name: "Start",
+            onClick: handleRun,
+            disabled: running,
+            shortcut: "S",
+          },
+          {
+            name: "Stop",
+            onClick: handleStop,
+            disabled: !running,
+            shortcut: "X",
+          },
+          {
+            name: "Step",
+            onClick: nextGeneration,
+            disabled: running,
+            shortcut: "E",
+          },
+          {
+            name: "Random",
+            onClick: randomizeGrid,
+            disabled: running,
+            shortcut: "R",
+          },
+          {
+            name: "Clear",
+            onClick: clearGrid,
+            disabled: running,
+            shortcut: "C",
+          },
+        ].map(({ name, onClick, disabled, shortcut }) => (
+          <button
+            key={name}
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+          >
+            <span>{name}</span>
+            <span className="shortcut-badge">{shortcut}</span>
+          </button>
+        ))}
       </section>
+      <p className="shortcut-note">
+        Keyboard shortcuts: S = Start, X = Stop, E = Step, R = Random, C =
+        Clear. Patterns: 1–5.
+      </p>
 
       <div className="board-wrapper">
         <Grid grid={grid} toggleCell={toggleCell} />
@@ -309,7 +382,7 @@ function App() {
           Load one of these classic Conway patterns to test how it evolves.
         </p>
         <div className="preset-grid">
-          {PRESETS.map((preset) => (
+          {PRESETS.map((preset, index) => (
             <button
               key={preset.name}
               type="button"
@@ -317,7 +390,10 @@ function App() {
               onClick={() => loadPreset(preset)}
               disabled={running}
             >
-              <strong>{preset.name}</strong>
+              <div className="preset-heading">
+                <strong>{preset.name}</strong>
+                <span className="preset-shortcut">{index + 1}</span>
+              </div>
               <span className="preset-description">{preset.description}</span>
             </button>
           ))}
