@@ -527,3 +527,31 @@ body {
 .cell.alive {
   background: var(--cell-alive);
 }
+
+@media (max-width: 640px) {
+  #root {
+    padding: 0.75rem;
+  }
+
+  .app-shell {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .theme-selector {
+    padding: 0 0.75rem;
+  }
+
+  .preset-panel,
+  .saved-panel,
+  .save-modal {
+    padding: 0.8rem;
+  }
+
+  .controls button,
+  .save-pattern-button,
+  .saved-delete-button,
+  .preset-button {
+    padding: 0.65rem 0.8rem;
+  }
+}
